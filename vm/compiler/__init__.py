@@ -1,4 +1,4 @@
-from compilator.program import Program
+from compiler.program import Program
 
 
 def parse(text):

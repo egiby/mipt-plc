@@ -1,4 +1,4 @@
-from compilator.program import Serializable
+from compiler.program import Serializable
 
 
 str_ids = {
