@@ -1,4 +1,4 @@
-from compilator import asm_compile
+from compiler import asm_compile
 
 import sys
 
@@ -7,7 +7,7 @@ from argparse import ArgumentParser
 
 def parse_args(argv):
     argument_parser = ArgumentParser()
-    argument_parser.add_argument('code', help='input compilator path')
+    argument_parser.add_argument('code', help='input path')
     argument_parser.add_argument('--output', '-o', help='output binary path', default='a.out')
 
     return argument_parser.parse_args(argv)
