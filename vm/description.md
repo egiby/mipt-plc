@@ -2,10 +2,14 @@
 
 ## Registers:
 There are 32 general-purpose 32bit registers, called r0 ... r31
+Behaviour of overflow in register is undefined
 
+r28 is used for result of comparison
 fp == r29
 sp == r30
 ip == r31
+
+there is no callee-safe guarantee for registers
 
 ## Section .text
 
@@ -28,18 +32,17 @@ ip == r31
 
 - mov r0, r1
 - cmp r0, r1
-- ldr r0, r0
-- str r0, r0
+- ldr r0, r1
+- str r0, r1
 
 
 - addr r1, label
 - je label
 - jne label
 - jng label
-- jnz label
 - call label
 
-
+- ret
 - syscall
 
 ## Section .data

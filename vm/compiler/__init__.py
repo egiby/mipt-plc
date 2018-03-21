@@ -1,4 +1,5 @@
 from compiler.program import Program
+from compiler.parser import Parser
 
 
 def parse(text):
@@ -6,9 +7,8 @@ def parse(text):
     :param text: assembly code
     :return: Program object
     """
-    # lines = text.splitlines()
-
-    return Program()
+    code_parser = Parser(text)
+    return code_parser.parse()
 
 
 def asm_compile(text):

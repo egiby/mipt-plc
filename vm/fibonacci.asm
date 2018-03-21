@@ -1,5 +1,7 @@
         global  main
-        extern  printf
+
+        section .data
+format: db  "%20ld", 10, 0
 
         section .text
 main:
@@ -35,6 +37,3 @@ print:
 
         pop     r3                     ; restore r3 before returning
         ret
-
-        section .data
-format: db  "%20ld", 10, 0
