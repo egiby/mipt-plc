@@ -11,13 +11,13 @@ ip == r31
 
 there is no callee-safe guarantee for registers
 
-## Section .text
 
-### Commands:
+## Commands:
 - add r0, r1, r2
 - sub r0, r1, r2
 - mul r0, r1, r2
 - orr r0, r1, r2
+- xor r0, r1, r2
 - and r0, r1, r2
 
 
@@ -37,23 +37,26 @@ there is no callee-safe guarantee for registers
 
 
 - addr r1, label
+
+
 - je label
 - jne label
 - jng label
+
+
 - call label
 
-- ret
-- syscall
 
-## Section .data
-### Commands:
 - db "smth", 1, 2, 3, 0
 - dd 0x12345678
 
 
+- ret
+- syscall
+
+
 ## System calls
 Expected system call id in r0
-- 1 write (in: r1 - file handle, in: r2 - output address, in: r3 - (maximum) number of bytes)
-- 2 read  (in: r1 - file handle, in: r2 - input address, in: r3 - (maximum) number of bytes)
-- 3 alloc (in: r1 - number of bytes, in: r2 - start address)
-
+- 1 write (in: r1 - output address, in: r2 - number of bytes)
+- 2 readint (in: r1 - input address)
+- 3 writeint (in: r1 - output address)

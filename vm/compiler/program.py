@@ -8,6 +8,10 @@ class Serializable:
     def get_id(self):
         raise NotImplementedError()
 
+    @staticmethod
+    def basic_size():
+        raise NotImplementedError()
+
     def size(self):
         raise NotImplementedError()
 
@@ -57,6 +61,16 @@ class Program(Serializable):
         self.instructions.append(instruction)
         self.address += instruction.size()
 
+    def add_data_instruction(self, instruction, label=''):
+        address = self.get_last_address() + instruction.basic_size()
+        if label:
+            self.label_encoder.add_label(label, address)
+
+        instruction.label = address
+        self.add_instruction(instruction)
+
+        return instruction.label
+
     def serialize(self):
         bin_data = []
 
@@ -68,7 +82,7 @@ class Program(Serializable):
         bin_data.append(pickle.dumps(self.label_encoder))
         binary = b''.join(bin_data)
 
-        return len(binary).to_bytes(word_size, byte_order) + binary
+        return (len(bin_data) - 1).to_bytes(word_size, byte_order) + binary
 
     def deserialize(self, binary):
         size = int.from_bytes(binary[:word_size], byte_order)
