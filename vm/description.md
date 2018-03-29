@@ -47,7 +47,7 @@ there is no callee-safe guarantee for registers
 - call label
 
 
-- db "smth", 1, 2, 3, 0
+- db "smth", 13
 - dd 0x12345678
 
 

@@ -152,6 +152,7 @@ def main(args):
     program.add_instruction(create_instruction('syscall'))  # output fib(n)
 
     binary = program.serialize()
+    print(binary)
 
     vm = VirtualMachine(binary, memory_size=100)
 
