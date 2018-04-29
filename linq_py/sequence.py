@@ -8,8 +8,13 @@ def flatten_generator(generator):
 
 
 def take(generator, n):
-    for i in range(n):
-        yield next(generator)
+    idx = 0
+    for x in generator:
+        if idx == n:
+            break
+
+        yield x
+        idx += 1
 
 
 class Sequence:

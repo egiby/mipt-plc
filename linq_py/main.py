@@ -16,13 +16,14 @@ def main():
           .to_list())
 
     with open('text.txt', 'r') as text:
-        print(Sequence(text.readlines())
+        print(Sequence(["a b d b  b bs b sb sb sa bsa "])
               .select(lambda line: line.split())
               .flatten()
               .group_by(lambda x: x)
               .select(lambda x: (x[0], len(x[1])))
               .order_by(lambda x: -x[1])
-              .to_list()[:50])
+              .take(50)
+              .to_list())
 
 
 if __name__ == '__main__':
