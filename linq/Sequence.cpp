@@ -1,4 +1,5 @@
-//
-// Created by egiby on 28.04.18.
-//
+#include "Sequence.h"
 
+namespace NLINQ {
+
+}
