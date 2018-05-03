@@ -16,7 +16,7 @@ def main():
           .to_list())
 
     with open('text.txt', 'r') as text:
-        print(Sequence(["a b d b  b bs b sb sb sa bsa "])
+        print(Sequence(text)
               .select(lambda line: line.split())
               .flatten()
               .group_by(lambda x: x)
