@@ -65,6 +65,12 @@ NAsync::Future<TResult> SimpleThreadPool::TryEnqueueSimple(std::function<TResult
             result->SetData(new TResult(task()));
         } catch (NAsync::AsyncException* e) {
             result->SetException(e);
+        } catch (std::runtime_error &e) {
+            auto error = new NAsync::AsyncException(e.what());
+            result->SetException(error);
+        } catch (...) {
+            auto error = new NAsync::AsyncException("unknown error");
+            result->SetException(error);
         }
     };
 

@@ -28,7 +28,17 @@ namespace NAsync {
                 auto simpleTask = std::bind(task, args...);
 
                 auto init = [result, simpleTask]() {
-                    result->SetData(new TResult(simpleTask()));
+                    try {
+                        result->SetData(new TResult(simpleTask()));
+                    } catch (NAsync::AsyncException* e) {
+                        result->SetException(e);
+                    } catch (std::runtime_error &e) {
+                        auto error = new NAsync::AsyncException(e.what());
+                        result->SetException(error);
+                    } catch (...) {
+                        auto error = new NAsync::AsyncException("unknown error");
+                        result->SetException(error);
+                    }
                 };
 
                 auto future = result->GetFuture();
