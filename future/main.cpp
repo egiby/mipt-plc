@@ -4,21 +4,26 @@
 #include <unistd.h>
 
 #include "Future.h"
-#include "ThreadPool.h"
+#include "Async.h"
 
 int main() {
     SimpleThreadPool pool;
     pool.Init();
 
+    srand(501);
+
     std::function<int()> task = [] {
-//        std::this_thread::sleep_for(std::chrono::seconds(3));
-        return 5;
+        int time = rand() % 10;
+        std::this_thread::sleep_for(std::chrono::seconds(time));
+        return time;
     };
-    auto value = pool.TryEnqueue(task);
+    std::vector<NAsync::Future<int>> tasks;
+    for (int i = 0; i < 8; ++i) {
+        tasks.push_back(NAsync::Async(task, NAsync::LaunchPolicy::Async, &pool));
+    }
 
-    assert(value);
-
-    std::cout << *value.Get() << std::endl;
+    for (auto &value: tasks)
+        std::cout << *value.Get() << std::endl;
 
     return 0;
 }

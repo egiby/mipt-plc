@@ -8,8 +8,10 @@
 #include <thread>
 #include <mutex>
 #include <condition_variable>
+#include <functional>
 
 #include <cassert>
+
 
 namespace NAsync {
     template<class TData>
@@ -23,6 +25,9 @@ namespace NAsync {
         std::shared_ptr<TResult> Get() const;
         std::shared_ptr<TResult> TryGet() const noexcept;
 
+        // TODO: some way not to do this?
+        void SetInitializer(std::function<void()> init);
+
         bool IsFailed() const noexcept;
 
         friend class Promise<TResult>;
@@ -31,7 +36,7 @@ namespace NAsync {
         Future(Future&& future) noexcept = default;
         Future& operator = (const Future&) = delete;
         Future& operator = (Future&&) noexcept = default;
-        ~Future();
+        ~Future() = default;
 
         explicit operator bool();
 
@@ -40,6 +45,7 @@ namespace NAsync {
         }
 
         std::shared_ptr<AsyncData<TResult>> data;
+        std::function<void()> initializer;
     };
 
     template<class TData>
@@ -83,13 +89,15 @@ namespace NAsync {
 
     template<class TData>
     Promise<TData>::~Promise() {
-        std::cerr << "destroy promise" << std::endl;
     }
 
     template<class TResult>
     std::shared_ptr<TResult> Future<TResult>::Get() const {
         {
             assert(data);
+            if (initializer)
+                initializer();
+
             std::unique_lock<std::mutex> lock(data->dataGuard);
 
             data->notifier.wait(lock, [this]() {
@@ -119,7 +127,7 @@ namespace NAsync {
     }
 
     template<class TResult>
-    Future<TResult>::~Future() {
-        std::cerr << "destroy future" << std::endl;
+    void Future<TResult>::SetInitializer(std::function<void()> init) {
+        initializer = init;
     }
 }

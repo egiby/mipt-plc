@@ -12,7 +12,9 @@ set(FUTURE_PROMICE
         AsyncData.h
         Future.h
         Exception.h
-        ThreadPool.h)
+        ThreadPool.h
+        Async.h
+        )
 
 add_executable(future ${FUTURE_PROMICE} main.cpp)
 

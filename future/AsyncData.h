@@ -41,10 +41,8 @@ namespace NAsync {
 
     template<class TData>
     void AsyncData<TData>::SetData(TData* newData) {
-        std::cerr << "SetData: " << *newData << std::endl;
         data.reset(newData);
         notifier.notify_all();
-        std::cerr << "SetData completed: " << *newData << std::endl;
     }
 
     template<class TData>

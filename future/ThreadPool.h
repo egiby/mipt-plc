@@ -1,6 +1,9 @@
+#pragma once
+
 #include <thread>
 #include <vector>
 #include <functional>
+#include <future>
 
 #include "Future.h"
 
@@ -11,13 +14,17 @@ public:
           taskGuards(numThreads),
           notifiers(numThreads),
           isFree(numThreads),
-          tasks(numThreads) {
+          tasks(numThreads),
+          stop(false) {
     }
 
     void Init();
 
     template<class TResult>
-    NAsync::Future<TResult> TryEnqueue(std::function<TResult()> task);
+    NAsync::Future<TResult> TryEnqueueSimple(std::function<TResult()> task);
+
+    template<class TResult, class... Args>
+    NAsync::Future<TResult> TryEnqueue(std::function<TResult(Args...)> task, Args... args);
 
     ~SimpleThreadPool();
 
@@ -30,14 +37,19 @@ private:
     std::vector<bool> isFree;
     std::vector<std::function<void()>> tasks;
     int numThreads;
+    bool stop;
 };
 
-void SimpleThreadPool::threadFunction(SimpleThreadPool& _this, int idx) {
-    while (true) {
+inline void SimpleThreadPool::threadFunction(SimpleThreadPool& _this, int idx) {
+    while (!_this.stop) {
         std::unique_lock<std::mutex> lock(_this.taskGuards[idx]);
         _this.notifiers[idx].wait(lock, [&] {
-            return !_this.isFree[idx];
+            return !_this.isFree[idx] || _this.stop;
         });
+
+        if (_this.stop) {
+            return;
+        }
 
         _this.tasks[idx]();
         _this.isFree[idx] = true;
@@ -45,8 +57,8 @@ void SimpleThreadPool::threadFunction(SimpleThreadPool& _this, int idx) {
 }
 
 template<class TResult>
-NAsync::Future<TResult> SimpleThreadPool::TryEnqueue(std::function<TResult()> task) {
-    auto* result = new NAsync::Promise<TResult>();
+NAsync::Future<TResult> SimpleThreadPool::TryEnqueueSimple(std::function<TResult()> task) {
+    std::shared_ptr<NAsync::Promise<TResult>> result(new NAsync::Promise<TResult>());
 
     std::function<void()> workerTask = [result, task] () {
         try {
@@ -54,7 +66,6 @@ NAsync::Future<TResult> SimpleThreadPool::TryEnqueue(std::function<TResult()> ta
         } catch (NAsync::AsyncException* e) {
             result->SetException(e);
         }
-        delete result;
     };
 
     for (int i = 0; i < numThreads; ++i) {
@@ -68,18 +79,25 @@ NAsync::Future<TResult> SimpleThreadPool::TryEnqueue(std::function<TResult()> ta
         }
     }
 
-    delete result;
     return NAsync::Future<TResult>();
 }
 
-void SimpleThreadPool::Init() {
+inline void SimpleThreadPool::Init() {
     for (int i = 0; i < numThreads; ++i) {
         isFree[i] = true;
         workers.emplace_back(threadFunction, std::ref(*this), i);
-        workers.back().detach();
     }
 }
 
-SimpleThreadPool::~SimpleThreadPool() {
-    std::cerr << "destroy thread pool" << std::endl;
+inline SimpleThreadPool::~SimpleThreadPool() {
+    stop = true;
+    for (int i = 0; i < numThreads; ++i) {
+        notifiers[i].notify_one();
+        workers[i].join();
+    }
+}
+
+template<class TResult, class... Args>
+NAsync::Future<TResult> SimpleThreadPool::TryEnqueue(std::function<TResult(Args...)> task, Args... args) {
+    return TryEnqueueSimple<TResult>(std::bind(task, args...));
 }
