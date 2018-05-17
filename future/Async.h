@@ -10,7 +10,7 @@ namespace NAsync {
 
     template<class TResult, class... Args>
     Future<TResult> Async(LaunchPolicy policy,
-                          SimpleThreadPool *pool,
+                          ThreadPool *pool,
                           std::function<TResult(Args...)> task,
                           Args ...args) {
         switch (policy) {

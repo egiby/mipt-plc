@@ -13,8 +13,9 @@ set(FUTURE_PROMICE
         Future.h
         Exception.h
         ThreadPool.h
+        PoolQueue.h
         Async.h
-        )
+        SimplePoolQueue.h SimplePoolQueue.cpp)
 
 add_executable(future ${FUTURE_PROMICE} main.cpp)
 

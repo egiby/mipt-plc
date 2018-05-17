@@ -6,104 +6,87 @@
 #include <future>
 
 #include "Future.h"
+#include "SimplePoolQueue.h"
 
-class SimpleThreadPool {
-public:
-    explicit SimpleThreadPool(int numThreads = std::thread::hardware_concurrency())
-        : numThreads(numThreads),
-          taskGuards(numThreads),
-          notifiers(numThreads),
-          isFree(numThreads),
-          tasks(numThreads),
-          stop(false) {
-    }
-
-    void Init();
-
-    template<class TResult>
-    NAsync::Future<TResult> TryEnqueueSimple(std::function<TResult()> task);
-
-    template<class TResult, class... Args>
-    NAsync::Future<TResult> TryEnqueue(std::function<TResult(Args...)> task, Args... args);
-
-    ~SimpleThreadPool();
-
-private:
-    static void threadFunction(SimpleThreadPool& _this, int idx);
-
-    std::vector<std::thread> workers;
-    std::vector<std::mutex> taskGuards;
-    std::vector<std::condition_variable> notifiers;
-    std::vector<bool> isFree;
-    std::vector<std::function<void()>> tasks;
-    int numThreads;
-    bool stop;
-};
-
-inline void SimpleThreadPool::threadFunction(SimpleThreadPool& _this, int idx) {
-    while (!_this.stop) {
-        std::unique_lock<std::mutex> lock(_this.taskGuards[idx]);
-        _this.notifiers[idx].wait(lock, [&] {
-            return !_this.isFree[idx] || _this.stop;
-        });
-
-        if (_this.stop) {
-            return;
+namespace NAsync {
+    class ThreadPool {
+    public:
+        explicit ThreadPool(int numThreads = std::thread::hardware_concurrency(), IPoolQueue *customQueue = nullptr)
+                : numThreads(numThreads),
+                  queue(customQueue ? customQueue : new SimplePoolQueue(numThreads)),
+                  stop(new bool(false)) {
+            for (int i = 0; i < numThreads; ++i) {
+                queue->ReleaseThread(i);
+                workers.emplace_back(threadFunction, std::ref(*queue), std::cref(*stop), i);
+            }
         }
 
-        _this.tasks[idx]();
-        _this.isFree[idx] = true;
-    }
-}
+        template<class TResult>
+        NAsync::Future<TResult> TryEnqueueSimple(std::function<TResult()> task);
 
-template<class TResult>
-NAsync::Future<TResult> SimpleThreadPool::TryEnqueueSimple(std::function<TResult()> task) {
-    std::shared_ptr<NAsync::Promise<TResult>> result(new NAsync::Promise<TResult>());
+        template<class TResult, class... Args>
+        NAsync::Future<TResult> TryEnqueue(std::function<TResult(Args...)> task, Args... args);
 
-    std::function<void()> workerTask = [result, task] () {
-        try {
-            result->SetData(new TResult(task()));
-        } catch (NAsync::AsyncException* e) {
-            result->SetException(e);
-        } catch (std::runtime_error &e) {
-            auto error = new NAsync::AsyncException(e.what());
-            result->SetException(error);
-        } catch (...) {
-            auto error = new NAsync::AsyncException("unknown error");
-            result->SetException(error);
-        }
+        ~ThreadPool();
+
+    private:
+        static void threadFunction(NAsync::IPoolQueue& queue, const bool &stop, int idx);
+
+        std::vector<std::thread> workers;
+        std::unique_ptr<IPoolQueue> queue;
+        std::unique_ptr<bool> stop;
+        int numThreads;
     };
 
-    for (int i = 0; i < numThreads; ++i) {
-        if (isFree[i]) {
-            std::lock_guard<std::mutex> guard(taskGuards[i]);
-            isFree[i] = false;
-            tasks[i] = workerTask;
-            notifiers[i].notify_all();
+    // TODO: need atomic bool
+    inline void ThreadPool::threadFunction(NAsync::IPoolQueue &queue, const bool &stop, int idx) {
+        while (!stop) {
+            queue.WaitTask(idx, [&]() {return stop;});
 
-            return result->GetFuture();
+            if (stop) {
+                return;
+            }
+
+            queue.Task(idx)();
+            queue.ReleaseThread(idx);
         }
     }
 
-    return NAsync::Future<TResult>();
-}
+    template<class TResult>
+    NAsync::Future<TResult> ThreadPool::TryEnqueueSimple(std::function<TResult()> task) {
+        std::shared_ptr<NAsync::Promise<TResult>> result(new NAsync::Promise<TResult>());
 
-inline void SimpleThreadPool::Init() {
-    for (int i = 0; i < numThreads; ++i) {
-        isFree[i] = true;
-        workers.emplace_back(threadFunction, std::ref(*this), i);
+        std::function<void()> workerTask = [result, task] () {
+            try {
+                result->SetData(new TResult(task()));
+            } catch (AsyncException* e) {
+                result->SetException(e);
+            } catch (std::runtime_error &e) {
+                auto error = new AsyncException(e.what());
+                result->SetException(error);
+            } catch (...) {
+                auto error = new AsyncException("unknown error");
+                result->SetException(error);
+            }
+        };
+
+        if (queue->TryEnqueue(workerTask)) {
+            return result->GetFuture();
+        }
+
+        return NAsync::Future<TResult>();
     }
-}
 
-inline SimpleThreadPool::~SimpleThreadPool() {
-    stop = true;
-    for (int i = 0; i < numThreads; ++i) {
-        notifiers[i].notify_one();
-        workers[i].join();
+    inline ThreadPool::~ThreadPool() {
+        *stop = true;
+        for (int i = 0; i < numThreads; ++i) {
+            queue->NotifyThread(i);
+            workers[i].join();
+        }
     }
-}
 
-template<class TResult, class... Args>
-NAsync::Future<TResult> SimpleThreadPool::TryEnqueue(std::function<TResult(Args...)> task, Args... args) {
-    return TryEnqueueSimple<TResult>(std::bind(task, args...));
+    template<class TResult, class... Args>
+    NAsync::Future<TResult> ThreadPool::TryEnqueue(std::function<TResult(Args...)> task, Args... args) {
+        return TryEnqueueSimple<TResult>(std::bind(task, args...));
+    }
 }

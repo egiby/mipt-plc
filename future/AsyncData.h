@@ -41,18 +41,21 @@ namespace NAsync {
 
     template<class TData>
     void AsyncData<TData>::SetData(TData* newData) {
+        std::lock_guard<std::mutex> guard(dataGuard);
         data.reset(newData);
         notifier.notify_all();
     }
 
     template<class TData>
     void AsyncData<TData>::SetException(AsyncException *newException) {
+        std::lock_guard<std::mutex> guard(dataGuard);
         exception = newException;
         notifier.notify_all();
     }
 
     template<class TData>
     std::shared_ptr<TData> AsyncData<TData>::GetData() const {
+//        std::lock_guard<std::mutex> guard(dataGuard);
         return data;
     }
 
