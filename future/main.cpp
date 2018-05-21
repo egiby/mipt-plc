@@ -12,8 +12,7 @@ int main() {
     srand(501);
 
     std::function<int(int, int)> task = [](int time, int result) {
-//        std::this_thread::sleep_for(std::chrono::seconds(time));
-//        throw 1;
+        std::this_thread::sleep_for(std::chrono::seconds(time));
         return result;
     };
 

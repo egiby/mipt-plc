@@ -14,12 +14,15 @@ namespace NAsync {
         explicit ThreadPool(int numThreads = std::thread::hardware_concurrency(), IPoolQueue *customQueue = nullptr)
                 : numThreads(numThreads),
                   queue(customQueue ? customQueue : new SimplePoolQueue(numThreads)),
-                  stop(new bool(false)) {
+                  stop(false) {
             for (int i = 0; i < numThreads; ++i) {
                 queue->ReleaseThread(i);
-                workers.emplace_back(threadFunction, std::ref(*queue), std::cref(*stop), i);
+                workers.emplace_back(threadFunction, std::ref(*queue), std::cref(stop), i);
             }
         }
+
+        ThreadPool(ThreadPool&&) = delete;
+        ThreadPool(const ThreadPool&) = delete;
 
         template<class TResult>
         NAsync::Future<TResult> TryEnqueueSimple(std::function<TResult()> task);
@@ -30,18 +33,18 @@ namespace NAsync {
         ~ThreadPool();
 
     private:
-        static void threadFunction(NAsync::IPoolQueue& queue, const bool &stop, int idx);
+        static void threadFunction(NAsync::IPoolQueue& queue, const std::atomic<bool> &stop, int idx);
 
         std::vector<std::thread> workers;
         std::unique_ptr<IPoolQueue> queue;
-        std::unique_ptr<bool> stop;
+        std::atomic<bool> stop;
         int numThreads;
     };
 
     // TODO: need atomic bool
-    inline void ThreadPool::threadFunction(NAsync::IPoolQueue &queue, const bool &stop, int idx) {
+    inline void ThreadPool::threadFunction(NAsync::IPoolQueue &queue, const std::atomic<bool> &stop, int idx) {
         while (!stop) {
-            queue.WaitTask(idx, [&]() {return stop;});
+            queue.WaitTask(idx, [&]() {return bool(stop);});
 
             if (stop) {
                 return;
@@ -78,7 +81,7 @@ namespace NAsync {
     }
 
     inline ThreadPool::~ThreadPool() {
-        *stop = true;
+        stop = true;
         for (int i = 0; i < numThreads; ++i) {
             queue->NotifyThread(i);
             workers[i].join();
