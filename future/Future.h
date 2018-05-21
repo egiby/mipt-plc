@@ -28,8 +28,6 @@ namespace NAsync {
         // TODO: some way not to do this?
         void SetInitializer(std::function<void()> init);
 
-        bool IsFailed() const noexcept;
-
         friend class Promise<TResult>;
 
         Future(const Future& future) = delete;
@@ -65,7 +63,7 @@ namespace NAsync {
         Promise(Promise&&) noexcept = default;
         Promise& operator = (Promise&&) noexcept = default;
 
-        ~Promise();
+        ~Promise() = default;
 
         friend class Future<TData>;
     private:
@@ -87,10 +85,6 @@ namespace NAsync {
         return Future<TData>(data);
     }
 
-    template<class TData>
-    Promise<TData>::~Promise() {
-    }
-
     template<class TResult>
     std::shared_ptr<TResult> Future<TResult>::Get() const {
         {
@@ -101,7 +95,7 @@ namespace NAsync {
             std::unique_lock<std::mutex> lock(data->dataGuard);
 
             data->notifier.wait(lock, [this]() {
-                return data->GetData() || data->GetException();
+                return !data->Empty();
             });
         }
 
@@ -114,11 +108,6 @@ namespace NAsync {
     template<class TResult>
     std::shared_ptr<TResult> Future<TResult>::TryGet() const noexcept {
         return data->GetData();
-    }
-
-    template<class TResult>
-    bool Future<TResult>::IsFailed() const noexcept {
-        return bool(data->GetException());
     }
 
     template<class TResult>

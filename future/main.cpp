@@ -18,7 +18,7 @@ int main() {
 
     std::vector<NAsync::Future<int>> tasks;
     for (int i = 0; i < 10; ++i) {
-        tasks.push_back(NAsync::Async(NAsync::LaunchPolicy::Async, &pool, task, 3, 10 - i));
+        tasks.push_back(NAsync::Async(NAsync::LaunchPolicy::Async, &pool, task, 1, 10 - i));
     }
 
     for (auto &value: tasks) {
@@ -31,7 +31,7 @@ int main() {
     }
 
     for (int i = 0; i < 10; ++i) {
-        tasks[i] = NAsync::Async(NAsync::LaunchPolicy::Async, &pool, task, 3, 10 - i);
+        tasks[i] = NAsync::Async(NAsync::LaunchPolicy::Async, &pool, task, 1, 10 - i);
     }
 
     for (auto &value: tasks) {
